@@ -182,13 +182,9 @@ def main():
 
     st.markdown("---")
 
-    # Sidebar filters
-    st.sidebar.header("Filters")
-    show_paid_off = st.sidebar.toggle("Show Paid Off Debts", value=False)
-    
-    # Filter debts for display
-    status_filter = "Paid Off" if show_paid_off else "Active Debt"
-    display_debts = [debt for debt in all_debts if debt['status'] == status_filter]
+    # Sidebar filters removed — treemap already handles status selection
+    # Default to showing active debts in the company grouping section
+    display_debts = [debt for debt in all_debts if debt['status'] == 'Active Debt']
     
     # === BNPL GROUPING SECTION ===
     st.header("🏢 Debts Grouped by Company")
@@ -200,7 +196,7 @@ def main():
     
     # Display each company group
     if not company_groups:
-        st.info(f"No debts with status '{status_filter}' to display.")
+        st.info("No active debts to display.")
 
     for company_name in sorted(company_groups.keys()):
         company_debts = company_groups[company_name]
@@ -242,7 +238,6 @@ def main():
                 st.divider()
     
     # Refresh button
-    st.sidebar.markdown("---")
     if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
         st.rerun()
 
