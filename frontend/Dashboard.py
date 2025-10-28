@@ -79,36 +79,6 @@ def main():
     active_debts_df = df[df['status'] == 'Active Debt'].copy()
     active_debts_df['is_overdue'] = active_debts_df['days_until_due'] < 0
 
-    # Debug section - shows raw data for troubleshooting
-    with st.expander("🔍 Debug: View Raw Data"):
-        st.write("**All Debts DataFrame:**")
-        # Convert all object columns to string for safe display to avoid Arrow serialization issues
-        df_display = df.copy()
-        for col in df_display.select_dtypes(include=['object']).columns:
-            df_display[col] = df_display[col].astype(str)
-        if 'due_date' in df_display.columns and pd.api.types.is_datetime64_any_dtype(df_display['due_date']):
-            df_display['due_date'] = df_display['due_date'].dt.strftime('%Y-%m-%d')
-        st.dataframe(df_display)
-        
-        st.write("**Active Debts DataFrame:**")
-        active_display = active_debts_df.copy()
-        for col in active_display.select_dtypes(include=['object']).columns:
-            active_display[col] = active_display[col].astype(str)
-        if 'due_date' in active_display.columns and pd.api.types.is_datetime64_any_dtype(active_display['due_date']):
-            active_display['due_date'] = active_display['due_date'].dt.strftime('%Y-%m-%d')
-        st.dataframe(active_display)
-        
-        if not active_debts_df.empty:
-            st.write("Number of active debts:", len(active_debts_df))
-            st.write("Data types:")
-            st.write(active_debts_df[['company_name', 'amount_owed', 'minimum_payment', 'days_until_due']].dtypes)
-            st.write("Sample values:")
-            st.write(active_debts_df[['company_name', 'amount_owed', 'minimum_payment', 'days_until_due']].head())
-            st.write("Sum of amount_owed:", active_debts_df['amount_owed'].sum())
-            st.write("Sum of minimum_payment:", active_debts_df['minimum_payment'].sum())
-            st.write("Company grouping:")
-            st.write(active_debts_df.groupby('company_name')['amount_owed'].sum())
-
     # === URGENT NOTIFICATIONS SECTION ===
     st.header("🚨 Urgent Notifications")
     
@@ -174,17 +144,21 @@ def main():
         combined_treemap_df = combined_treemap_df[combined_treemap_df['amount_owed'] > 0]
         
         if not combined_treemap_df.empty:
-            # Pre-format RM values as strings to avoid Plotly template formatting issues
-            combined_treemap_df['rm_text'] = combined_treemap_df['amount_owed'].apply(lambda x: f"RM {x:,.2f}")
+            # Aggregate by status + company so multiple entries for the same company are summed
+            agg_df = (
+                combined_treemap_df
+                .groupby(['display_status', 'company_name'], as_index=False)
+                .agg({'amount_owed': 'sum'})
+            )
+            agg_df['rm_text'] = agg_df['amount_owed'].apply(lambda x: f"RM {x:,.2f}")
 
             fig_treemap = px.treemap(
-                combined_treemap_df,
+                agg_df,
                 path=[px.Constant("All Debts"), 'display_status', 'company_name'],
                 values='amount_owed',
                 color='display_status',
                 color_discrete_map={
-                    '(?)': '#1f77b4',
-                    'Active': '#1f77b4',
+                    'Active': "#f7db0c",
                     'Overdue': '#d62728',
                     'Paid Off': '#2ca02c'
                 },
@@ -192,9 +166,10 @@ def main():
                 custom_data=['rm_text']
             )
 
+            # Use the aggregated numeric %{value} for display so the summed company value appears
             fig_treemap.update_traces(
                 textinfo='text',
-                texttemplate='<b>%{label}</b><br>%{customdata[0]}',
+                texttemplate='<b>%{label}</b><br>RM %{value:,.2f}',
                 hovertemplate='<b>%{label}</b><br>Amount: %{customdata[0]}<br>Category: %{parent}<extra></extra>'
             )
 
