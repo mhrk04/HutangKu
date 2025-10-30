@@ -70,3 +70,54 @@ async def delete_debt(debt_id: str) -> bool:
     collection = get_collection()
     result = await collection.delete_one({"_id": ObjectId(debt_id)})
     return result.deleted_count > 0
+
+# ============ COMPANY OPERATIONS ============
+
+def company_helper(company) -> dict:
+    """Convert MongoDB company document to dictionary"""
+    return {
+        "id": str(company["_id"]),
+        "name": company["name"]
+    }
+
+async def get_companies_collection():
+    """Get the companies collection"""
+    from .connection import get_database
+    db = get_database()
+    return db["companies"]
+
+async def get_all_companies() -> List[str]:
+    """Retrieve all company names"""
+    collection = await get_companies_collection()
+    companies = []
+    async for company in collection.find().sort("name", 1):
+        companies.append(company["name"])
+    return companies
+
+async def add_company(company_name: str) -> dict:
+    """Add a new company name"""
+    collection = await get_companies_collection()
+    
+    # Check if company already exists
+    existing = await collection.find_one({"name": company_name})
+    if existing:
+        return company_helper(existing)
+    
+    # Insert new company
+    result = await collection.insert_one({"name": company_name})
+    new_company = await collection.find_one({"_id": result.inserted_id})
+    return company_helper(new_company)
+
+async def delete_company(company_id: str) -> bool:
+    """Delete a company"""
+    collection = await get_companies_collection()
+    result = await collection.delete_one({"_id": ObjectId(company_id)})
+    return result.deleted_count > 0
+
+async def get_company_by_name(company_name: str) -> Optional[dict]:
+    """Get company by name"""
+    collection = await get_companies_collection()
+    company = await collection.find_one({"name": company_name})
+    if company:
+        return company_helper(company)
+    return None

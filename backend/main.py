@@ -4,7 +4,7 @@ Runs on port 8000
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import debt_router
+from backend.routers import debt_router, company_router
 from core.config import settings
 
 # Initialize FastAPI application
@@ -25,6 +25,7 @@ app.add_middleware(
 
 # Include routers (no trailing slash in prefix, routes will be /debts, not /debts/)
 app.include_router(debt_router.router, prefix="/debts", tags=["debts"])
+app.include_router(company_router.router)  # prefix already set in router
 
 @app.get("/", tags=["root"])
 async def read_root():
